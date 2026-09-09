@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGETMENOT — a private constellation</title>
+<meta name="description" content="The people, promises, stories, and small details you mean to remember.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✳️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#07090f;--panel:#0d1119;--ink:#e8e6e1;--dim:#78808c;--line:#1a212c;--star:#a8c6f0;--promise:#f0c96a;--story:#b48ef2;--detail:#7cc7a3}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;overflow:hidden}
+  #sky{position:fixed;inset:0;display:block}
+  header{position:fixed;top:0;left:0;right:0;padding:22px 26px;display:flex;justify-content:space-between;align-items:baseline;pointer-events:none;z-index:5}
+  h1{font-size:15px;letter-spacing:.3em;font-weight:600}
+  h1 span{color:var(--dim)}
+  .tag{position:fixed;top:52px;left:26px;font-size:10px;color:var(--dim);z-index:5;letter-spacing:.06em}
+  #addBtn{pointer-events:auto;background:transparent;border:1px solid #2a3342;color:var(--ink);font:inherit;font-size:11px;padding:8px 18px;border-radius:20px;cursor:pointer;letter-spacing:.12em}
+  #addBtn:hover{background:#131924}
+  #hint{position:fixed;bottom:22px;left:26px;font-size:10px;color:#454d5c;z-index:5;line-height:1.8}
+  /* card */
+  #card{position:fixed;top:0;right:-420px;width:400px;max-width:92vw;height:100vh;background:var(--panel);border-left:1px solid var(--line);z-index:10;transition:right .3s ease;display:flex;flex-direction:column}
+  #card.open{right:0}
+  #card .c-head{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline}
+  #cardName{font-size:16px;letter-spacing:.1em}
+  #closeCard{background:none;border:none;color:var(--dim);font:inherit;cursor:pointer;font-size:14px}
+  #cardBody{flex:1;overflow-y:auto;padding:18px 22px}
+  .sec-title{font-size:9px;letter-spacing:.25em;color:var(--dim);text-transform:uppercase;margin:18px 0 8px}
+  .entry{font-size:12px;line-height:1.6;padding:8px 10px;border-left:2px solid var(--line);margin-bottom:8px;word-wrap:break-word}
+  .entry.promise{border-color:var(--promise)} .entry.story{border-color:var(--story)} .entry.detail{border-color:var(--detail)}
+  .entry .del{float:right;color:#3a4352;background:none;border:none;font:inherit;font-size:9px;cursor:pointer}
+  .entry .del:hover{color:var(--bad,#f06a4f)}
+  .entry-form{display:flex;gap:6px;margin-bottom:6px}
+  .entry-form input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;padding:8px 10px;border-radius:6px;outline:none}
+  .entry-form input:focus{border-color:#2a3342}
+  .entry-form button{background:transparent;border:1px solid #2a3342;color:var(--dim);font:inherit;font-size:11px;padding:8px 12px;border-radius:6px;cursor:pointer}
+  .entry-form button:hover{color:var(--ink)}
+  .c-foot{padding:14px 22px;border-top:1px solid var(--line);font-size:10px;color:var(--dim)}
+  /* new person modal */
+  #modal{position:fixed;inset:0;background:rgba(4,6,10,.7);display:none;align-items:center;justify-content:center;z-index:20}
+  #modal.open{display:flex}
+  .m-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px;width:340px}
+  .m-box h2{font-size:12px;letter-spacing:.2em;margin-bottom:16px;font-weight:400}
+  .m-box input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:13px;padding:10px 12px;border-radius:6px;outline:none;margin-bottom:10px}
+  .m-box .row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+  .m-box button{background:transparent;border:1px solid #2a3342;color:var(--ink);font:inherit;font-size:11px;padding:8px 16px;border-radius:16px;cursor:pointer}
+  .empty-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#3a4352;font-size:13px;text-align:center;line-height:2;z-index:4;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<header>
+  <h1>FORGET<span>MENOT</span></h1>
+  <button id="addBtn">+ A PERSON</button>
+</header>
+<div class="tag">a private constellation of the people you mean to remember</div>
+<div id="hint">every star is a person · click one to open their card<br>everything lives in this browser · nothing leaves</div>
+<div class="empty-hint" id="emptyHint">the sky is empty.<br>add someone who matters.</div>
+
+<div id="card">
+  <div class="c-head"><span id="cardName"></span><button id="closeCard">✕</button></div>
+  <div id="cardBody">
+    <div class="sec-title" style="color:var(--promise)">promises</div>
+    <div id="promises"></div>
+    <div class="entry-form"><input id="inPromise" placeholder="i told them i'd…"><button data-add="promise">+</button></div>
+    <div class="sec-title" style="color:var(--story)">stories</div>
+    <div id="stories"></div>
+    <div class="entry-form"><input id="inStory" placeholder="the time we…"><button data-add="story">+</button></div>
+    <div class="sec-title" style="color:var(--detail)">small details</div>
+    <div id="details"></div>
+    <div class="entry-form"><input id="inDetail" placeholder="takes coffee with…"><button data-add="detail">+</button></div>
+  </div>
+  <div class="c-foot" id="cardFoot"></div>
+</div>
+
+<div id="modal">
+  <div class="m-box">
+    <h2>NEW STAR</h2>
+    <input id="newName" placeholder="their name" autocomplete="off">
+    <input id="newNote" placeholder="who they are to you (optional)" autocomplete="off">
+    <div class="row">
+      <button id="cancelNew">cancel</button>
+      <button id="saveNew">place in sky</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='forgetmenot.v1';
+  var people=[];
+  try{people=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){}
+  function save(){localStorage.setItem(KEY,JSON.stringify(people))}
+
+  var sky=document.getElementById('sky'),ctx=sky.getContext('2d');
+  var W,H,DPR=Math.min(2,window.devicePixelRatio||1);
+  function resize(){W=innerWidth;H=innerHeight;sky.width=W*DPR;sky.height=H*DPR;sky.style.width=W+'px';sky.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0)}
+  resize();addEventListener('resize',resize);
+
+  // star background dust
+  var dust=[];for(var i=0;i<160;i++)dust.push({x:Math.random(),y:Math.random(),r:Math.random()*1.1+.2,tw:Math.random()*6.28});
+
+  var selected=null,t0=performance.now();
+  function draw(now){
+    var t=(now-t0)/1000;
+    ctx.fillStyle='#07090f';ctx.fillRect(0,0,W,H);
+    dust.forEach(function(d){
+      ctx.globalAlpha=.25+.2*Math.sin(t*1.3+d.tw);
+      ctx.fillStyle='#5a6a84';ctx.beginPath();ctx.arc(d.x*W,d.y*H,d.r,0,6.28);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    // constellation lines between people who share nothing but the sky
+    ctx.strokeStyle='rgba(90,106,132,.14)';ctx.lineWidth=1;
+    for(var i=0;i<people.length;i++)for(var j=i+1;j<people.length;j++){
+      ctx.beginPath();ctx.moveTo(people[i].x*W,people[i].y*H);ctx.lineTo(people[j].x*W,people[j].y*H);ctx.stroke();
+    }
+    people.forEach(function(p){
+      var x=p.x*W,y=p.y*H,sel=selected===p.id;
+      var pulse=sel?1+.15*Math.sin(t*4):1;
+      var g=ctx.createRadialGradient(x,y,0,x,y,26*pulse);
+      g.addColorStop(0,'rgba(168,198,240,.5)');g.addColorStop(1,'rgba(168,198,240,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,26*pulse,0,6.28);ctx.fill();
+      ctx.fillStyle=sel?'#fff':'#a8c6f0';
+      ctx.beginPath();ctx.arc(x,y,sel?4:2.6,0,6.28);ctx.fill();
+      ctx.fillStyle=sel?'#e8e6e1':'#78808c';
+      ctx.font='10px ui-monospace,Menlo,monospace';ctx.textAlign='center';
+      ctx.fillText(p.name.toUpperCase(),x,y+22);
+    });
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  function refreshEmpty(){document.getElementById('emptyHint').style.display=people.length?'none':'block'}
+  refreshEmpty();
+
+  sky.addEventListener('click',function(e){
+    var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
+    people.forEach(function(p){
+      var d=Math.hypot(p.x*W-mx,p.y*H-my);
+      if(d<bd){bd=d;best=p}
+    });
+    if(best&&bd<40)openCard(best.id);else closeCard();
+  });
+
+  var card=document.getElementById('card');
+  function openCard(id){
+    selected=id;
+    var p=people.find(function(x){return x.id===id});if(!p)return;
+    document.getElementById('cardName').textContent=p.name;
+    document.getElementById('cardFoot').textContent=(p.note?p.note+' · ':'')+'placed '+new Date(p.ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    renderEntries(p,'promise','promises');
+    renderEntries(p,'story','stories');
+    renderEntries(p,'detail','details');
+    card.classList.add('open');
+  }
+  function closeCard(){selected=null;card.classList.remove('open')}
+  document.getElementById('closeCard').onclick=closeCard;
+
+  function renderEntries(p,kind,elId){
+    var el=document.getElementById(elId);el.innerHTML='';
+    (p[kind+'s']||[]).forEach(function(txt,i){
+      var d=document.createElement('div');d.className='entry '+kind;
+      var del=document.createElement('button');del.className='del';del.textContent='✕';
+      del.onclick=function(){p[kind+'s'].splice(i,1);save();openCard(p.id)};
+      d.appendChild(del);
+      d.appendChild(document.createTextNode(txt));
+      el.appendChild(d);
+    });
+  }
+  document.querySelectorAll('[data-add]').forEach(function(b){
+    b.onclick=function(){
+      var kind=b.dataset.add;
+      var inp=document.getElementById('in'+kind.charAt(0).toUpperCase()+kind.slice(1));
+      var v=inp.value.trim();if(!v||!selected)return;
+      var p=people.find(function(x){return x.id===selected});if(!p)return;
+      var key=kind+'s';p[key]=p[key]||[];p[key].unshift(v);
+      inp.value='';save();openCard(selected);
+    };
+  });
+  ['Promise','Story','Detail'].forEach(function(k){
+    document.getElementById('in'+k).addEventListener('keydown',function(e){
+      if(e.key==='Enter')document.querySelector('[data-add="'+k.toLowerCase()+'"]').click();
+    });
+  });
+
+  var modal=document.getElementById('modal');
+  document.getElementById('addBtn').onclick=function(){modal.classList.add('open');document.getElementById('newName').focus()};
+  document.getElementById('cancelNew').onclick=function(){modal.classList.remove('open')};
+  document.getElementById('saveNew').onclick=function(){
+    var n=document.getElementById('newName').value.trim();if(!n)return;
+    people.push({id:Date.now()+'',name:n,note:document.getElementById('newNote').value.trim(),
+      x:.12+Math.random()*.76,y:.16+Math.random()*.62,ts:Date.now(),promises:[],stories:[],details:[]});
+    document.getElementById('newName').value='';document.getElementById('newNote').value='';
+    modal.classList.remove('open');save();refreshEmpty();
+  };
+  document.getElementById('newName').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('saveNew').click()});
+  modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('open')});
+})();
+</script>
+</body>
+</html>
